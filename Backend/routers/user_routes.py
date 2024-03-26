@@ -58,7 +58,7 @@ def create_user(user: User):
     """
 
     create_user_in_db(user)
-    
+    return {"message": "User created successfully"}
 
 
 @router.put("/user-password", status_code=status.HTTP_200_OK)
@@ -68,7 +68,7 @@ def update_password(user: User, token: str):
         raise credentials_exception
 
     update_password_in_db(user.email_id, user.password)
-
+    return {"message": "Password updated sucessfully"}
 
 @router.put("/user-email", status_code=status.HTTP_200_OK)
 def update_email(prev_email_id: str, new_email_id: str, token: str):
@@ -77,7 +77,7 @@ def update_email(prev_email_id: str, new_email_id: str, token: str):
         raise credentials_exception
 
     update_email_in_db(prev_email_id, new_email_id)
-
+    return {"message": "Eamail updated successfully"}
 
 @router.delete("/user", status_code=status.HTTP_200_OK)
 def delete_user(email_id: str, token: str):
@@ -86,3 +86,4 @@ def delete_user(email_id: str, token: str):
         raise credentials_exception
 
     delete_user_from_db(email_id)
+    return {"message": "user deleted successfully"}

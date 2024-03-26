@@ -8,6 +8,11 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from config.database import user_db
 from models.users import User
+from models.folders import Folder
+
+
+from services.folder_services import add_folder_in_db, delete_folder_from_db_by_id
+from services.code_block_services import delete_code_block_from_db_by_id
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -51,7 +56,8 @@ def get_user_from_db(email_id: str) -> dict:
 
 
 def create_user_in_db(user: User):
-    """Create new user in users collection
+    """Create new user in users collection,
+    creare root folder for that user
 
     Args:
         user (User): _description_
@@ -61,11 +67,15 @@ def create_user_in_db(user: User):
         HTTPException: _description_
     """
     if user_db.find_one({"email_id": user.email_id}) is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT,detail="user already exist")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="user already exist"
+        )
 
     if validate_email_id(user.email_id) is False:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid email")
-    
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid email"
+        )
+
     if validate_password_constrain(user.password) is False:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="weak password"
@@ -75,11 +85,17 @@ def create_user_in_db(user: User):
     user_dict["password"] = get_password_hash(user_dict["password"])
     # _id is created by system wich is of type ObjectId
     # ObjectId is of 12 byte while str is of 24 so better to use ObjectId
-    user_db.insert_one(user_dict)
+
+    # create user and root folder for the user, user can not delete the root folder
+    response = user_db.insert_one(user_dict)
+    user_id = str(response.inserted_id)
+    root_folder = Folder(user_id=user_id, folder_name="~", parent_folder_id="-1")
+    add_folder_in_db(root_folder)
 
 
 def delete_user_from_db(email_id: str) -> bool:
-    """Delete user from users collection
+    """Delete user from users collection,
+    also delete all it's folder and code blocks from the database
 
     Args:
         email_id (str): email of user
@@ -87,13 +103,19 @@ def delete_user_from_db(email_id: str) -> bool:
     Returns:
         bool: status
     """
-    if user_db.find_one({"email_id": email_id}) is not None:
-        user_db.delete_one({"email_id": email_id})
-        return True
-    else:
+    user = get_user_from_db(email_id)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
         )
+
+    user_id = user["_id"]
+    user_db.delete_one({"email_id": email_id})
+    # delete all data associated with user
+    delete_folder_from_db_by_id(user_id)
+    delete_code_block_from_db_by_id(user_id)
+
+    # TODO - above function should run asynchronously
 
 
 def update_password_in_db(email_id: str, new_password: str) -> bool:

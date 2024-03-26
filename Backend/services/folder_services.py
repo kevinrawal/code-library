@@ -27,7 +27,7 @@ def search_folder_by_name_from_db(folder_name: str, user_id: str):
 
     for folder in matching_folders:
         folder["_id"] = str(folder["_id"])
-    
+
     return matching_folders
 
 
@@ -40,8 +40,10 @@ def add_folder_in_db(folder: Folder):
 def update_folder_in_db(folder_id: str, folder: Folder):
     """Update Folder in foldes collection"""
     if get_folder_from_db(folder_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="folder not found")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="folder not found"
+        )
+
     folder_dict = folder.model_dump()
     folder_dict["_id"] = ObjectId(folder_id)
     filter_query = {"_id": ObjectId(folder_id)}
@@ -52,3 +54,10 @@ def update_folder_in_db(folder_id: str, folder: Folder):
 def delete_folder_from_db(folder_id: str):
     """delete folder from folders collection"""
     folders_db.delete_one({"_id": ObjectId(folder_id)})
+    # TODO - delete all it's child folder and code blocks
+
+
+def delete_folder_from_db_by_id(user_id: str):
+    """Delete every folder by user if"""
+    filter_query = {"user_id": user_id}
+    folders_db.delete_many(filter_query)
