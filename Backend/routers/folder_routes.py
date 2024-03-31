@@ -56,11 +56,11 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email_id_from_token: str = payload.get("email_id")
+        email_id_from_token = payload.get("email_id")
         return email_id == email_id_from_token
     except JWTError:
         return False
-    
+
 @router.get("/folder-by-id", status_code=status.HTTP_200_OK)
 def get_folder_by_id(folder_id: str, token: str):
     """Get folder by it's _id 
@@ -89,7 +89,7 @@ def get_folder_by_id(folder_id: str, token: str):
         raise credentials_exception
 
 
-@router.get("/folder-by-name")
+@router.get("/folder-by-name", status_code=status.HTTP_200_OK)
 def search_folder_by_name(folder_name: str, token: str):
     """search folder by it's name, this function return all the matching folder with user_id in token
 
@@ -136,6 +136,7 @@ def create_folder(folder: Folder, token: str):
 def update_folder(folder_id: str,folder: Folder, token: str):
     """Update folder"""
     #TODO - need more security 
+
     if authorize_user_by_user_id(folder.user_id, token):
         update_folder_in_db(folder_id,folder)
     else:
@@ -145,9 +146,10 @@ def update_folder(folder_id: str,folder: Folder, token: str):
 @router.delete("/folder", status_code=status.HTTP_200_OK)
 def delete_folder(folder_id: str, token: str):
     """Delete folder"""
+
     folder = get_folder_from_db(folder_id)
     if folder is not None and authorize_user_by_user_id(folder["user_id"],token):
         delete_folder_from_db(folder_id)
     else:
         raise credentials_exception
-    
+

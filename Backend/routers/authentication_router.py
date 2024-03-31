@@ -31,8 +31,6 @@ router = APIRouter()
 
 
 class Token(BaseModel):
-    """Token Class"""
-
     access_token: str
     token_type: str
 
@@ -49,7 +47,7 @@ def verify_password(plain_password, hashed_password):
 
 def authenticate_user(email_id: str, password: str) -> dict:
     """Authenticate user based on provided email id and password,
-       it matches with database hashed password and return boolean value
+       it matches with database hashed password and return user
 
     Args:
         email_id (str):

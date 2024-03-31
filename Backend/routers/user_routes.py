@@ -14,8 +14,8 @@ from services.user_services import (
     delete_user_from_db,
 )
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # THIS CODE IS TO ACCESS MODULES OUTSIDE ROUTE AND APP FOLDER
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -40,7 +40,7 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email_id_from_token: str = payload.get("email_id")
+        email_id_from_token = payload.get("email_id")
         return email_id == email_id_from_token
     except JWTError:
         return False

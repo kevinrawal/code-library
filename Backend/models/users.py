@@ -1,4 +1,4 @@
-"""This file contain user module """
+"""Users defination"""
 
 from pydantic import BaseModel
 

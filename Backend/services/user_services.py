@@ -6,29 +6,26 @@ import re
 
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
+
 from config.database import user_db
 from models.users import User
 from models.folders import Folder
 
 
-from services.folder_services import add_folder_in_db, delete_folder_from_db_by_id
-from services.code_block_services import delete_code_block_from_db_by_id
+from services.folder_services import add_folder_in_db, delete_folder_from_db_by_user_id
+from services.code_block_services import delete_code_block_from_db_by_user_id
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
-class custom_exception(Exception):
-    pass
-
-
+#TODO - need to stonger the email validation method 
 def validate_email_id(email_id: str):
     """Validate email"""
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email_id))
 
-
+#TODO - need to stronger the password validation method
 def validate_password_constrain(password: str):
     """check password validation"""
     pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{8,}$"
@@ -47,6 +44,7 @@ def verify_password(plain_password, hashed_password):
 
 def get_user_from_db(email_id: str) -> dict:
     """Return user of userid as dictionary or none if user not exist"""
+
     user = user_db.find_one({"email_id": email_id})
     if user is not None:
         # changing the type of _id from ObjectId to string
@@ -57,15 +55,12 @@ def get_user_from_db(email_id: str) -> dict:
 
 def create_user_in_db(user: User):
     """Create new user in users collection,
-    creare root folder for that user
+    create root folder for that user
 
     Args:
         user (User): _description_
-
-    Raises:
-        HTTPException: _description_
-        HTTPException: _description_
     """
+
     if user_db.find_one({"email_id": user.email_id}) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="user already exist"
@@ -89,6 +84,7 @@ def create_user_in_db(user: User):
     # create user and root folder for the user, user can not delete the root folder
     response = user_db.insert_one(user_dict)
     user_id = str(response.inserted_id)
+
     root_folder = Folder(user_id=user_id, folder_name="~", parent_folder_id="-1")
     add_folder_in_db(root_folder)
 
@@ -112,21 +108,18 @@ def delete_user_from_db(email_id: str) -> bool:
     user_id = user["_id"]
     user_db.delete_one({"email_id": email_id})
     # delete all data associated with user
-    delete_folder_from_db_by_id(user_id)
-    delete_code_block_from_db_by_id(user_id)
+    delete_folder_from_db_by_user_id(user_id)
+    delete_code_block_from_db_by_user_id(user_id)
 
     # TODO - above function should run asynchronously
 
 
-def update_password_in_db(email_id: str, new_password: str) -> bool:
+def update_password_in_db(email_id: str, new_password: str):
     """Update password in the Database
 
     Args:
         email_id (str): email of user
         new_password (str): new password
-
-    Returns:
-        bool: _description_
     """
     user = get_user_from_db(email_id)
 
@@ -140,21 +133,17 @@ def update_password_in_db(email_id: str, new_password: str) -> bool:
             status_code=status.HTTP_400_BAD_REQUEST, detail="weak password"
         )
 
-    filter_match = {"email_id": email_id}
-    update = {"$set": {"password": get_password_hash(new_password)}}
-    user_db.update_one(filter_match, update)
-    return True
+    filter_query = {"email_id": email_id}
+    update_operation = {"$set": {"password": get_password_hash(new_password)}}
+    user_db.update_one(filter_query, update_operation)
 
 
-def update_email_in_db(prev_email_id: str, new_email_id: str) -> bool:
+def update_email_in_db(prev_email_id: str, new_email_id: str):
     """Update Email id in users collection
 
     Args:
         prev_email_id (str): existing email id
         new_email_id (str): email to set
-
-    Returns:
-        bool: status
     """
     user = get_user_from_db(prev_email_id)
 
@@ -168,7 +157,6 @@ def update_email_in_db(prev_email_id: str, new_email_id: str) -> bool:
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Email"
         )
 
-    filter_match = {"email_id": prev_email_id}
-    update = {"$set": {"email_id": new_email_id}}
-    user_db.update_one(filter_match, update)
-    return True
+    filter_query = {"email_id": prev_email_id}
+    update_operation = {"$set": {"email_id": new_email_id}}
+    user_db.update_one(filter_query, update_operation)
