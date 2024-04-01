@@ -62,7 +62,7 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
         return False
 
 @router.get("/folder-by-id", status_code=status.HTTP_200_OK)
-def get_folder_by_id(folder_id: str, token: str):
+async def get_folder_by_id(folder_id: str, token: str):
     """Get folder by it's _id 
 
     Args:
@@ -77,7 +77,7 @@ def get_folder_by_id(folder_id: str, token: str):
         _type_: _description_
     """
 
-    folder = get_folder_from_db(folder_id)
+    folder = await get_folder_from_db(folder_id)
 
     if folder is not None and authorize_user_by_user_id(folder["user_id"], token):
         return folder
@@ -90,7 +90,7 @@ def get_folder_by_id(folder_id: str, token: str):
 
 
 @router.get("/folder-by-name", status_code=status.HTTP_200_OK)
-def search_folder_by_name(folder_name: str, token: str):
+async def search_folder_by_name(folder_name: str, token: str):
     """search folder by it's name, this function return all the matching folder with user_id in token
 
     Args:
@@ -106,13 +106,13 @@ def search_folder_by_name(folder_name: str, token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
-        return search_folder_by_name_from_db(folder_name, user_id)
+        return await search_folder_by_name_from_db(folder_name, user_id)
     except JWTError:
        raise credentials_exception
 
 
 @router.post("/folder", status_code=status.HTTP_200_OK)
-def create_folder(folder: Folder, token: str):
+async def create_folder(folder: Folder, token: str):
     """Create new folder in database based on user_id from token
 
     Args:
@@ -127,29 +127,29 @@ def create_folder(folder: Folder, token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
         folder.user_id = user_id
-        add_folder_in_db(folder)
+        await add_folder_in_db(folder)
     except JWTError:
        raise credentials_exception
 
 
 @router.put("/folder", status_code=status.HTTP_200_OK)
-def update_folder(folder_id: str,folder: Folder, token: str):
+async def update_folder(folder_id: str,folder: Folder, token: str):
     """Update folder"""
     #TODO - need more security 
 
     if authorize_user_by_user_id(folder.user_id, token):
-        update_folder_in_db(folder_id,folder)
+        await update_folder_in_db(folder_id,folder)
     else:
         raise credentials_exception
 
 
 @router.delete("/folder", status_code=status.HTTP_200_OK)
-def delete_folder(folder_id: str, token: str):
+async def delete_folder(folder_id: str, token: str):
     """Delete folder"""
 
-    folder = get_folder_from_db(folder_id)
+    folder = await get_folder_from_db(folder_id)
     if folder is not None and authorize_user_by_user_id(folder["user_id"],token):
-        delete_folder_from_db(folder_id)
+        await delete_folder_from_db(folder_id)
     else:
         raise credentials_exception
 

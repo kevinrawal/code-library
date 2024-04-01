@@ -28,7 +28,7 @@ credentials_exception = HTTPException(
 router = APIRouter()
 
 
-def authorize_user_via_email(email_id: str, token: str) -> bool:
+async def authorize_user_via_email(email_id: str, token: str) -> bool:
     """Authorize user based on email id
 
     Args:
@@ -47,7 +47,7 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
 
 
 @router.post("/user", status_code=status.HTTP_200_OK)
-def create_user(user: User):
+async def create_user(user: User):
     """Create new user in users collection
 
     Args:
@@ -57,33 +57,33 @@ def create_user(user: User):
         HTTPException: if user is already exist
     """
 
-    create_user_in_db(user)
+    await create_user_in_db(user)
     return {"message": "User created successfully"}
 
 
 @router.put("/user-password", status_code=status.HTTP_200_OK)
-def update_password(user: User, token: str):
+async def update_password(user: User, token: str):
     """Update password in users collection"""
     if authorize_user_via_email(user.email_id, token) is False:
         raise credentials_exception
 
-    update_password_in_db(user.email_id, user.password)
+    await update_password_in_db(user.email_id, user.password)
     return {"message": "Password updated sucessfully"}
 
 @router.put("/user-email", status_code=status.HTTP_200_OK)
-def update_email(prev_email_id: str, new_email_id: str, token: str):
+async def update_email(prev_email_id: str, new_email_id: str, token: str):
     """Update email in users collectiom"""
     if authorize_user_via_email(prev_email_id, token) is False:
         raise credentials_exception
 
-    update_email_in_db(prev_email_id, new_email_id)
+    await update_email_in_db(prev_email_id, new_email_id)
     return {"message": "Eamail updated successfully"}
 
 @router.delete("/user", status_code=status.HTTP_200_OK)
-def delete_user(email_id: str, token: str):
+async def delete_user(email_id: str, token: str):
     """Delete user in users collection"""
     if authorize_user_via_email(email_id, token) is False:
         raise credentials_exception
 
-    delete_user_from_db(email_id)
+    await delete_user_from_db(email_id)
     return {"message": "user deleted successfully"}

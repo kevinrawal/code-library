@@ -10,7 +10,7 @@ app.include_router(folder_routes.router)
 
 
 @app.get("/")
-def home():
+async def home():
     """Root endpoint"""
     return {"message": "hello"}
 

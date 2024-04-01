@@ -3,16 +3,17 @@
 import os
 import dotenv
 
-from pymongo.mongo_client import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.server_api import ServerApi
 
 dotenv.load_dotenv()
 
 password = os.environ["MONGODB_PASSWORD"]
 
-url = f"mongodb+srv://kevinrawal30:{password}@codelibrary.zoiyv11.mongodb.net/?retryWrites=true&w=majority&appName=CodeLibrary"
+uri = f"mongodb+srv://kevinrawal30:{password}@codelibrary.zoiyv11.mongodb.net/?retryWrites=true&w=majority&appName=CodeLibrary"
 
 # connect to MongoAtlas
-client = MongoClient(url)
+client = AsyncIOMotorClient(uri, server_api=ServerApi('1'))
 db = client.codelibrary_db
 
 user_db = db["users"]
@@ -27,3 +28,7 @@ folders_db = db["folders"]
 # creating compound indexes
 # folders_db.create_index([("user_id", pymongo.ASCENDING), ("folder_name", pymongo.ASCENDING)])
 # code_blocks_db.create_index([("user_id", pymongo.ASCENDING), ("code_block_name", pymongo.ASCENDING)])
+
+# Below code Used to connect without motor 
+# from pymongo.mongo_client import MongoClient
+# client = MongoClient(url) change with original 

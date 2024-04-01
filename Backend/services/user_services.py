@@ -3,6 +3,7 @@
 import os
 import sys
 import re
+import asyncio
 
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
@@ -42,10 +43,10 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def get_user_from_db(email_id: str) -> dict:
+async def get_user_from_db(email_id: str) -> dict:
     """Return user of userid as dictionary or none if user not exist"""
 
-    user = user_db.find_one({"email_id": email_id})
+    user = await user_db.find_one({"email_id": email_id})
     if user is not None:
         # changing the type of _id from ObjectId to string
         user["_id"] = str(user["_id"])
@@ -53,7 +54,7 @@ def get_user_from_db(email_id: str) -> dict:
     return user
 
 
-def create_user_in_db(user: User):
+async def create_user_in_db(user: User):
     """Create new user in users collection,
     create root folder for that user
 
@@ -61,7 +62,7 @@ def create_user_in_db(user: User):
         user (User): _description_
     """
 
-    if user_db.find_one({"email_id": user.email_id}) is not None:
+    if await user_db.find_one({"email_id": user.email_id}) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="user already exist"
         )
@@ -82,24 +83,21 @@ def create_user_in_db(user: User):
     # ObjectId is of 12 byte while str is of 24 so better to use ObjectId
 
     # create user and root folder for the user, user can not delete the root folder
-    response = user_db.insert_one(user_dict)
+    response = await user_db.insert_one(user_dict)
     user_id = str(response.inserted_id)
 
     root_folder = Folder(user_id=user_id, folder_name="~", parent_folder_id="-1")
-    add_folder_in_db(root_folder)
+    await add_folder_in_db(root_folder)
 
 
-def delete_user_from_db(email_id: str) -> bool:
+async def delete_user_from_db(email_id: str):
     """Delete user from users collection,
     also delete all it's folder and code blocks from the database
 
     Args:
         email_id (str): email of user
-
-    Returns:
-        bool: status
     """
-    user = get_user_from_db(email_id)
+    user = await get_user_from_db(email_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
@@ -107,21 +105,21 @@ def delete_user_from_db(email_id: str) -> bool:
 
     user_id = user["_id"]
     user_db.delete_one({"email_id": email_id})
-    # delete all data associated with user
-    delete_folder_from_db_by_user_id(user_id)
-    delete_code_block_from_db_by_user_id(user_id)
+    # delete all data associated with user asynchronously 
+    delete_folder_task = delete_folder_from_db_by_user_id(user_id)
+    delete_code_block_task  = delete_code_block_from_db_by_user_id(user_id)
+    await asyncio.gather(delete_folder_task,delete_code_block_task)
 
-    # TODO - above function should run asynchronously
 
 
-def update_password_in_db(email_id: str, new_password: str):
+async def update_password_in_db(email_id: str, new_password: str):
     """Update password in the Database
 
     Args:
         email_id (str): email of user
         new_password (str): new password
     """
-    user = get_user_from_db(email_id)
+    user = await get_user_from_db(email_id)
 
     if user is None:
         raise HTTPException(
@@ -135,17 +133,17 @@ def update_password_in_db(email_id: str, new_password: str):
 
     filter_query = {"email_id": email_id}
     update_operation = {"$set": {"password": get_password_hash(new_password)}}
-    user_db.update_one(filter_query, update_operation)
+    await user_db.update_one(filter_query, update_operation)
 
 
-def update_email_in_db(prev_email_id: str, new_email_id: str):
+async def update_email_in_db(prev_email_id: str, new_email_id: str):
     """Update Email id in users collection
 
     Args:
         prev_email_id (str): existing email id
         new_email_id (str): email to set
     """
-    user = get_user_from_db(prev_email_id)
+    user = await get_user_from_db(prev_email_id)
 
     if user is None:
         raise HTTPException(
@@ -159,4 +157,5 @@ def update_email_in_db(prev_email_id: str, new_email_id: str):
 
     filter_query = {"email_id": prev_email_id}
     update_operation = {"$set": {"email_id": new_email_id}}
-    user_db.update_one(filter_query, update_operation)
+
+    await user_db.update_one(filter_query, update_operation)

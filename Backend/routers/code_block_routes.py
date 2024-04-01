@@ -62,7 +62,7 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
 
 #TODO - solve re-raising error in all below methods 
 @router.post("/code-block", status_code=status.HTTP_200_OK)
-def create_code_block(code_block: CodeBlock, token: str):
+async def create_code_block(code_block: CodeBlock, token: str):
     """Create new code block in code_blocks collection
 
     Args:
@@ -77,12 +77,12 @@ def create_code_block(code_block: CodeBlock, token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
         code_block.user_id = user_id
-        add_code_block_in_db(code_block)
+        await add_code_block_in_db(code_block)
     except JWTError:
        raise credentials_exception
 
 @router.get("/code-block-by-id", status_code=status.HTTP_200_OK)
-def get_code_block_by_id(code_block_id: str, token: str):
+async def get_code_block_by_id(code_block_id: str, token: str):
     """return code block of given id from code_blocks collection
 
     Args:
@@ -97,7 +97,7 @@ def get_code_block_by_id(code_block_id: str, token: str):
         _type_: _description_
     """
 
-    code_block = get_code_block_from_db(code_block_id)
+    code_block = await get_code_block_from_db(code_block_id)
 
     if code_block is not None and authorize_user_by_user_id(code_block["user_id"],token):
         return code_block
@@ -107,7 +107,7 @@ def get_code_block_by_id(code_block_id: str, token: str):
         raise credentials_exception
 
 @router.get("/code-block-by-name", status_code=status.HTTP_200_OK)
-def get_code_block_by_name(code_block_name: str, token: str):
+async def get_code_block_by_name(code_block_name: str, token: str):
     """Return code blocks of query name for current user
 
     Args:
@@ -121,12 +121,12 @@ def get_code_block_by_name(code_block_name: str, token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
-        return search_code_block_from_db(code_block_name, user_id)
+        return await search_code_block_from_db(code_block_name, user_id)
     except JWTError:
         raise credentials_exception
 
 @router.put("/code-block", status_code=status.HTTP_200_OK)
-def update_code_block(code_block_id: str, code_block: CodeBlock, token: str):
+async def update_code_block(code_block_id: str, code_block: CodeBlock, token: str):
     """Update code block in code blocks collection
 
     Args:
@@ -139,12 +139,12 @@ def update_code_block(code_block_id: str, code_block: CodeBlock, token: str):
     """
 
     if authorize_user_by_user_id(code_block.user_id, token):
-        update_code_block_in_db(code_block_id,code_block)
+        await update_code_block_in_db(code_block_id,code_block)
     else:
         raise credentials_exception
 
 @router.delete("/code-block", status_code=status.HTTP_200_OK)
-def delete_code_block(code_block_id: str, token: str):
+async def delete_code_block(code_block_id: str, token: str):
     """Delete code block from the code_blocks collection 
 
     Args:
@@ -155,8 +155,11 @@ def delete_code_block(code_block_id: str, token: str):
         credentials_exception: _description_
     """
     
-    code_block = get_code_block_from_db(code_block_id)
+    code_block = await get_code_block_from_db(code_block_id)
+
+    print(code_block)
     if code_block is not None and authorize_user_by_user_id(code_block["user_id"],token):
-        delete_code_block_from_db(code_block_id)
+        await delete_code_block_from_db(code_block_id)
     else:
+        print("credential")
         raise credentials_exception

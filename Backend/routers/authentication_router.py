@@ -45,7 +45,7 @@ def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def authenticate_user(email_id: str, password: str) -> dict:
+async def authenticate_user(email_id: str, password: str) -> dict:
     """Authenticate user based on provided email id and password,
        it matches with database hashed password and return user
 
@@ -56,7 +56,7 @@ def authenticate_user(email_id: str, password: str) -> dict:
     Returns:
         dict: return user if user is authenticated else return None
     """
-    user = get_user_from_db(email_id)
+    user = await get_user_from_db(email_id)
     if user is not None and verify_password(password, user["password"]):
         return user
     return None
@@ -92,7 +92,7 @@ async def login_for_access_token(user: User) -> Token:
     Returns:
         Token: jwt aceess token
     """
-    user_in_db = authenticate_user(user.email_id, user.password)
+    user_in_db = await authenticate_user(user.email_id, user.password)
     if user_in_db is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
