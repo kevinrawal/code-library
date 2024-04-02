@@ -20,13 +20,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-#TODO - need to stonger the email validation method 
+
+# TODO - Send OTP to validate Email
 def validate_email_id(email_id: str):
     """Validate email"""
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(pattern, email_id))
 
-#TODO - need to stronger the password validation method
+
+# TODO - This should not be in backedn as multiple requests can happen
 def validate_password_constrain(password: str):
     """check password validation"""
     pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{8,}$"
@@ -105,11 +107,10 @@ async def delete_user_from_db(email_id: str):
 
     user_id = user["_id"]
     user_db.delete_one({"email_id": email_id})
-    # delete all data associated with user asynchronously 
+    # delete all data associated with user asynchronously
     delete_folder_task = delete_folder_from_db_by_user_id(user_id)
-    delete_code_block_task  = delete_code_block_from_db_by_user_id(user_id)
-    await asyncio.gather(delete_folder_task,delete_code_block_task)
-
+    delete_code_block_task = delete_code_block_from_db_by_user_id(user_id)
+    await asyncio.gather(delete_folder_task, delete_code_block_task)
 
 
 async def update_password_in_db(email_id: str, new_password: str):

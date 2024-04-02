@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 from fastapi import HTTPException, status
 
 from config.database import folders_db
-from models.folders import Folder
+from models.folders import Folder, UpdateFolderName
 from services.code_block_services import delete_code_block_forcefully
 
 # THIS CODE IS TO ACCESS MODULES OUTSIDE ROUTE
@@ -43,26 +43,23 @@ async def add_folder_in_db(folder: Folder):
     folder_dict = folder.model_dump()
     response = await folders_db.insert_one(folder_dict)
 
-    # if current folder is not a root folder add current foder in parent's child list 
+    # if current folder is not a root folder add current foder in parent's child list
     if folder_dict["parent_folder_id"] != "-1":
         update_operation = {"$push": {"child_folders": str(response.inserted_id)}}
         # Convert str to ObjectId otherwise it will not able to identify the parent folder
-        filter_query = {"_id":  ObjectId(folder_dict["parent_folder_id"])}
+        filter_query = {"_id": ObjectId(folder_dict["parent_folder_id"])}
         await folders_db.update_one(filter_query, update_operation)
 
 
-async def update_folder_in_db(folder_id: str, folder: Folder):
-    """Update Folder in foldes collection"""
-    if await get_folder_from_db(folder_id) is None:
+async def update_folder_name_in_db(folder: UpdateFolderName):
+    """Update Folder name in foldes collection"""
+    if await get_folder_from_db(folder.folder_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="folder not found"
         )
 
-    folder_dict = folder.model_dump()
-    folder_dict["_id"] = ObjectId(folder_id)
-
-    filter_query = {"_id": ObjectId(folder_id)}
-    update_operation = {"$set": folder_dict}
+    filter_query = {"_id": ObjectId(folder.folder_id)}
+    update_operation = {"$set": {"folder_name": folder.folder_name}}
     await folders_db.update_one(filter_query, update_operation)
 
 
@@ -71,10 +68,16 @@ async def delete_folder_from_db(folder_id: str):
     folder = await get_folder_from_db(folder_id)
 
     if folder is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail=f"folder with id {folder_id}, does not exist")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"folder with id {folder_id}, does not exist",
+        )
 
     if folder["parent_folder_id"] == "-1":
-        raise HTTPException(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, detail="You can not delete root folder")
+        raise HTTPException(
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+            detail="You can not delete root folder",
+        )
 
     delete_tasks = []
     # delete all child code blocks
@@ -88,7 +91,7 @@ async def delete_folder_from_db(folder_id: str):
     # delete self
     delete_tasks.append(folders_db.delete_one({"_id": ObjectId(folder_id)}))
 
-    # delete parent of current folder 
+    # delete parent of current folder
     filter_query = {"_id": ObjectId(folder["parent_folder_id"])}
     update_operation = {"$pull": {"child_folders": folder["_id"]}}
     delete_tasks.append(folders_db.update_one(filter_query, update_operation))
@@ -98,6 +101,6 @@ async def delete_folder_from_db(folder_id: str):
 
 async def delete_folder_from_db_by_user_id(user_id: str):
     """Delete every folder by user if"""
-    
+
     filter_query = {"user_id": user_id}
     await folders_db.delete_many(filter_query)

@@ -5,9 +5,10 @@ from datetime import datetime, timedelta, timezone
 import sys
 import os
 import dotenv
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 
 from jose import jwt
 from passlib.context import CryptContext
@@ -16,10 +17,8 @@ from pydantic import BaseModel
 from models.users import User
 from services.user_services import get_user_from_db
 
-
 # THIS CODE IS TO ACCESS MODULES OUTSIDE ROUTE
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 
 dotenv.load_dotenv()
 
@@ -36,8 +35,6 @@ class Token(BaseModel):
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def verify_password(plain_password, hashed_password):
@@ -80,7 +77,9 @@ def create_access_token(data: dict, expires_delta: timedelta):
 
 
 @router.post("/token")
-async def login_for_access_token(user: User) -> Token:
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+) -> Token:
     """This Route is used to authenticate user and return access token
 
     Args:
@@ -92,6 +91,10 @@ async def login_for_access_token(user: User) -> Token:
     Returns:
         Token: jwt aceess token
     """
+    # form data has username and password filed,
+    # we need to convert it into user object before moving forward
+    user = User(email_id=form_data.username, password=form_data.password)
+
     user_in_db = await authenticate_user(user.email_id, user.password)
     if user_in_db is None:
         raise HTTPException(

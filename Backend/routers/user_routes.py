@@ -2,9 +2,13 @@
 
 import sys
 import os
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
+
 from jose import JWTError, jwt
+
 
 from models.users import User
 from services.user_services import (
@@ -25,10 +29,12 @@ credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials"
 )
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 router = APIRouter()
 
 
-async def authorize_user_via_email(email_id: str, token: str) -> bool:
+def authorize_user_via_email(email_id: str, token: str) -> bool:
     """Authorize user based on email id
 
     Args:
@@ -62,16 +68,21 @@ async def create_user(user: User):
 
 
 @router.put("/user-password", status_code=status.HTTP_200_OK)
-async def update_password(user: User, token: str):
+async def update_password(user: User, token: Annotated[str, Depends(oauth2_scheme)]):
     """Update password in users collection"""
+
     if authorize_user_via_email(user.email_id, token) is False:
         raise credentials_exception
 
     await update_password_in_db(user.email_id, user.password)
     return {"message": "Password updated sucessfully"}
 
+
+# TODO - prev_email and email should not be in query parameters
 @router.put("/user-email", status_code=status.HTTP_200_OK)
-async def update_email(prev_email_id: str, new_email_id: str, token: str):
+async def update_email(
+    prev_email_id: str, new_email_id: str, token: Annotated[str, Depends(oauth2_scheme)]
+):
     """Update email in users collectiom"""
     if authorize_user_via_email(prev_email_id, token) is False:
         raise credentials_exception
@@ -79,8 +90,9 @@ async def update_email(prev_email_id: str, new_email_id: str, token: str):
     await update_email_in_db(prev_email_id, new_email_id)
     return {"message": "Eamail updated successfully"}
 
+
 @router.delete("/user", status_code=status.HTTP_200_OK)
-async def delete_user(email_id: str, token: str):
+async def delete_user(email_id: str, token: Annotated[str, Depends(oauth2_scheme)]):
     """Delete user in users collection"""
     if authorize_user_via_email(email_id, token) is False:
         raise credentials_exception

@@ -1,16 +1,20 @@
 import sys
 import os
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
+
 from jose import JWTError, jwt
 
-from models.code_blocks import CodeBlock
+
+from models.code_blocks import CodeBlock, UpdateCodeBlock
 from services.code_block_services import (
     add_code_block_in_db,
     get_code_block_from_db,
     search_code_block_from_db,
     update_code_block_in_db,
-    delete_code_block_from_db
+    delete_code_block_from_db,
 )
 
 # THIS CODE IS TO ACCESS MODULES OUTSIDE ROUTE AND
@@ -19,12 +23,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = os.environ["ALGORITHM"]
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 router = APIRouter()
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Could not validate credentials",
 )
+
 
 def authorize_user_by_user_id(user_id: str, token: str) -> bool:
     """Authorize user based on user_id
@@ -43,6 +50,7 @@ def authorize_user_by_user_id(user_id: str, token: str) -> bool:
     except JWTError:
         return False
 
+
 def authorize_user_via_email(email_id: str, token: str) -> bool:
     """Authorize user based on email id
 
@@ -60,9 +68,12 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
     except JWTError:
         return False
 
-#TODO - solve re-raising error in all below methods 
+
+# TODO - solve re-raising error in all below methods
 @router.post("/code-block", status_code=status.HTTP_200_OK)
-async def create_code_block(code_block: CodeBlock, token: str):
+async def create_code_block(
+    code_block: CodeBlock, token: Annotated[str, Depends(oauth2_scheme)]
+):
     """Create new code block in code_blocks collection
 
     Args:
@@ -78,11 +89,15 @@ async def create_code_block(code_block: CodeBlock, token: str):
         user_id = payload.get("user_id")
         code_block.user_id = user_id
         await add_code_block_in_db(code_block)
+        return {"message": "code block added successfully"}
     except JWTError:
-       raise credentials_exception
+        raise credentials_exception
+
 
 @router.get("/code-block-by-id", status_code=status.HTTP_200_OK)
-async def get_code_block_by_id(code_block_id: str, token: str):
+async def get_code_block_by_id(
+    code_block_id: str, token: Annotated[str, Depends(oauth2_scheme)]
+):
     """return code block of given id from code_blocks collection
 
     Args:
@@ -99,15 +114,23 @@ async def get_code_block_by_id(code_block_id: str, token: str):
 
     code_block = await get_code_block_from_db(code_block_id)
 
-    if code_block is not None and authorize_user_by_user_id(code_block["user_id"],token):
+    if code_block is not None and authorize_user_by_user_id(
+        code_block["user_id"], token
+    ):
         return code_block
     elif code_block is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="code block not exist")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="code block not exist"
+        )
     else:
         raise credentials_exception
 
+
+# TODO - Can match similar names codeblock as well
 @router.get("/code-block-by-name", status_code=status.HTTP_200_OK)
-async def get_code_block_by_name(code_block_name: str, token: str):
+async def get_code_block_by_name(
+    code_block_name: str, token: Annotated[str, Depends(oauth2_scheme)]
+):
     """Return code blocks of query name for current user
 
     Args:
@@ -125,8 +148,11 @@ async def get_code_block_by_name(code_block_name: str, token: str):
     except JWTError:
         raise credentials_exception
 
+
 @router.put("/code-block", status_code=status.HTTP_200_OK)
-async def update_code_block(code_block_id: str, code_block: CodeBlock, token: str):
+async def update_code_block(
+    code_block: UpdateCodeBlock, token: Annotated[str, Depends(oauth2_scheme)]
+):
     """Update code block in code blocks collection
 
     Args:
@@ -139,13 +165,17 @@ async def update_code_block(code_block_id: str, code_block: CodeBlock, token: st
     """
 
     if authorize_user_by_user_id(code_block.user_id, token):
-        await update_code_block_in_db(code_block_id,code_block)
+        await update_code_block_in_db(code_block)
+        return {"message": "codeblock updated successfully"}
     else:
         raise credentials_exception
 
+
 @router.delete("/code-block", status_code=status.HTTP_200_OK)
-async def delete_code_block(code_block_id: str, token: str):
-    """Delete code block from the code_blocks collection 
+async def delete_code_block(
+    code_block_id: str, token: Annotated[str, Depends(oauth2_scheme)]
+):
+    """Delete code block from the code_blocks collection
 
     Args:
         code_block_id (str): _description_
@@ -154,12 +184,17 @@ async def delete_code_block(code_block_id: str, token: str):
     Raises:
         credentials_exception: _description_
     """
-    
+
     code_block = await get_code_block_from_db(code_block_id)
 
-    print(code_block)
-    if code_block is not None and authorize_user_by_user_id(code_block["user_id"],token):
+    if code_block is not None and authorize_user_by_user_id(
+        code_block["user_id"], token
+    ):
         await delete_code_block_from_db(code_block_id)
+        return {"message": "codeblock deleted successfully"}
+    elif code_block is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Code block not found"
+        )
     else:
-        print("credential")
         raise credentials_exception
