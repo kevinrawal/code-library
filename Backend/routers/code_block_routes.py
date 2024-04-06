@@ -171,6 +171,8 @@ async def update_code_block(
         raise credentials_exception
 
 
+#TODO - Multiple code block should delete with this route,
+# id's of code block as query parameter
 @router.delete("/code-block", status_code=status.HTTP_200_OK)
 async def delete_code_block(
     code_block_id: str, token: Annotated[str, Depends(oauth2_scheme)]
