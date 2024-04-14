@@ -6,6 +6,6 @@ function PageNotFound() {
          Page Not Found
        </div>
     );
-};
+}
 
 export default PageNotFound;

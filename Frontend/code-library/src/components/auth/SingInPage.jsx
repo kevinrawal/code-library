@@ -7,6 +7,6 @@ function SingInPage() {
          SingIn Page
        </div>
     );
-};
+}
 
 export default SingInPage;
