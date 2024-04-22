@@ -4,7 +4,7 @@ import sys
 import os
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.security import OAuth2PasswordBearer
 
 from jose import JWTError, jwt
@@ -16,6 +16,7 @@ from services.user_services import (
     update_password_in_db,
     update_email_in_db,
     delete_user_from_db,
+    generate_otp,
 )
 
 # THIS CODE IS TO ACCESS MODULES OUTSIDE ROUTE AND APP FOLDER
@@ -51,6 +52,12 @@ def authorize_user_via_email(email_id: str, token: str) -> bool:
     except JWTError:
         return False
 
+@router.get("/OTP", status_code=status.HTTP_200_OK)
+async def get_otp(email_id: str):
+    print("Email id ", email_id)
+    """Send OTP to validate Email"""
+    await generate_otp(email_id)
+    return {"message": "OTP sent successfully"}
 
 @router.post("/user", status_code=status.HTTP_200_OK)
 async def create_user(user: User):

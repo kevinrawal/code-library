@@ -3,7 +3,10 @@
 import os
 import sys
 import re
+import random
 import asyncio
+import smtplib
+import dotenv
 
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
@@ -17,7 +20,9 @@ from services.folder_services import add_folder_in_db, delete_folder_from_db_by_
 from services.code_block_services import delete_code_block_from_db_by_user_id
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+dotenv.load_dotenv()
 
+CODE_LIBRARY_EMAIL_CREDENTIALS = os.environ["CODE_LIBRARY_EMAIL_CREDENTIALS"]
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -44,6 +49,29 @@ def verify_password(plain_password, hashed_password):
     """Verify plain password with hashed password"""
     return pwd_context.verify(plain_password, hashed_password)
 
+async def generate_otp(email_id: str):
+    """Generating OTP of 6 digit 
+
+    Args:
+        email_id (str): _description_
+    """
+    otp = ""
+    for _ in range(6):
+        otp += str(random.randint(0, 9))
+
+    # logic to send the OTP 
+    print("OTP before sending", otp)
+    try:
+        session = smtplib.SMTP("smtp.gmail.com", 587)
+        session.starttls()
+        session.login("sender_email", CODE_LIBRARY_EMAIL_CREDENTIALS)
+        message = f"Your OTP is {otp}"
+        session.sendmail("sender_email", email_id, message)
+        session.quit()
+        return otp
+    except Exception as err:
+        print("ERROR " ,err)
+        return None
 
 async def get_user_from_db(email_id: str) -> dict:
     """Return user of userid as dictionary or none if user not exist"""
